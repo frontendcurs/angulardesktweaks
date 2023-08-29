@@ -1,0 +1,74 @@
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import java.io.*;
+import java.util.Date;
+
+@Service
+public class CouponService {
+
+    public void processMassiveLoad(MultipartFile file) {
+        try {
+            FileInputStream fileInputStream = (FileInputStream) file.getInputStream();
+            Workbook workbook = new XSSFWorkbook(fileInputStream);
+            Sheet sheet = workbook.getSheetAt(0);
+
+            for (Row row : sheet) {
+                if (row.getRowNum() == 0) continue; // Saltar la primera fila (encabezados)
+
+                GenerateCouponDTO generateCouponDTO = createGenerateCouponDTOFromRow(row);
+                try {
+                    generateCoupon(generateCouponDTO);
+                } catch (MiExcepcion e) {
+                    System.err.println("Error al generar cupón: " + e.getMessage());
+                }
+            }
+
+            workbook.close();
+            fileInputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+            throw new RuntimeException("Error al procesar el archivo.", e);
+        }
+    }
+
+    private GenerateCouponDTO createGenerateCouponDTOFromRow(Row row) {
+        GenerateCouponDTO generateCouponDTO = new GenerateCouponDTO();
+        generateCouponDTO.setRut(row.getCell(0).getStringCellValue());
+        generateCouponDTO.setStock((int) row.getCell(1).getNumericCellValue());
+        generateCouponDTO.setDescuento((int) row.getCell(2).getNumericCellValue());
+        generateCouponDTO.setFechaInicio(row.getCell(3).getDateCellValue());
+        generateCouponDTO.setFechaVencimiento(row.getCell(4).getDateCellValue());
+        return generateCouponDTO;
+    }
+
+    private void generateCoupon(GenerateCouponDTO generateCouponDTO) throws MiExcepcion {
+        // Lógica para generar cupones a partir de los datos en generateCouponDTO
+        // Si ocurre un error, lanzar la excepción MiExcepcion
+    }
+}
+
+
+________________________________
+================================
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.http.HttpStatus;
+
+@RestController
+@RequestMapping("/api")
+public class CouponController {
+
+    @Autowired
+    private CouponService couponService;
+
+    @PostMapping("/massiveLoad")
+    public ResponseEntity<String> massiveLoad(@RequestParam("file") MultipartFile file) {
+        couponService.processMassiveLoad(file);
+        return ResponseEntity.ok("Proceso de carga masiva completado.");
+    }
+}
