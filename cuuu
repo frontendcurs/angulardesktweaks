@@ -1,0 +1,132 @@
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import static org.mockito.Mockito.when;
+
+class CouponControllerTest {
+
+    @Mock
+    private CouponService couponService;
+
+    private CouponController couponController;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        couponController = new CouponController(couponService);
+    }
+
+    @Test
+    void testValidateCoupon() {
+        CouponResponseDTO responseDTO = CouponResponseDTO.builder()
+                .discountPercentage(10)
+                .isValid(true)
+                .build();
+
+        when(couponService.getCoupon("couponCode")).thenReturn(Mono.just(responseDTO));
+
+        StepVerifier.create(couponController.validateCoupon("nationalId", "couponCode"))
+                .expectNext(responseDTO)
+                .verifyComplete();
+    }
+}
+
+==========================
+
+package com.partnercheck.onboarding.onboarding.service;
+
+import com.partnercheck.onboarding.onboarding.dto.CouponResponseDTO;
+import com.partnercheck.onboarding.onboarding.model.Coupon;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import java.util.Date;
+
+import static org.mockito.Mockito.*;
+
+class CouponClientTest {
+
+    @Mock
+    private WebClient webClient;
+
+    private CouponClient couponClient;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        couponClient = new CouponClient(webClient, "http://coupon-service");
+    }
+
+    @Test
+    void testGetCouponValid() {
+        Coupon coupon = new Coupon();
+        coupon.setDiscount(10);
+        coupon.setEndDate(new Date(System.currentTimeMillis() + 100000)); // Future date
+        coupon.setStock(5);
+
+        when(webClient.get()).thenReturn(mock(WebClient.RequestHeadersUriSpec.class));
+        when(webClient.get().uri(anyString())).thenReturn(mock(WebClient.RequestHeadersUriSpec.class));
+        when(webClient.get().uri(anyString()).accept(any())).thenReturn(mock(WebClient.RequestHeadersSpec.class));
+        when(webClient.get().uri(anyString()).accept(any()).retrieve()).thenReturn(mock(WebClient.ResponseSpec.class));
+        when(webClient.get().uri(anyString()).accept(any()).retrieve().bodyToMono(Coupon.class)).thenReturn(Mono.just(coupon));
+
+        StepVerifier.create(couponClient.getCoupon("couponCode"))
+                .expectNextMatches(responseDTO ->
+                        responseDTO.isValid() && responseDTO.getDiscountPercentage() == 10)
+                .verifyComplete();
+    }
+}
+
+==================
+package com.partnercheck.onboarding.onboarding.service;
+
+import com.partnercheck.onboarding.onboarding.dto.CouponResponseDTO;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
+
+import static org.mockito.Mockito.when;
+
+class CouponServiceTest {
+
+    @Mock
+    private CouponClient couponClient;
+
+    private CouponService couponService;
+
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        couponService = new CouponService(couponClient);
+    }
+
+    @Test
+    void testGetCouponValid() {
+        CouponResponseDTO responseDTO = CouponResponseDTO.builder()
+                .discountPercentage(10)
+                .isValid(true)
+                .build();
+
+        when(couponClient.getCoupon("couponCode")).thenReturn(Mono.just(responseDTO));
+
+        StepVerifier.create(couponService.getCoupon("couponCode"))
+                .expectNext(responseDTO)
+                .verifyComplete();
+    }
+}
+
