@@ -1,0 +1,29 @@
+void testGetCouponValid() {
+    Coupon coupon = new Coupon();
+    coupon.setDiscount(10);
+    coupon.setEndDate(new Date(System.currentTimeMillis() + 100000)); // Fecha futura
+    coupon.setStock(5);
+
+    WebClient.RequestHeadersUriSpec<?> requestHeadersUriSpec = mock(WebClient.RequestHeadersUriSpec.class);
+    WebClient.RequestHeadersSpec<?> requestHeadersSpec = mock(WebClient.RequestHeadersSpec.class);
+    WebClient.ResponseSpec responseSpec = mock(WebClient.ResponseSpec.class);
+
+    when(webClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.accept(any())).thenReturn(requestHeadersSpec);
+    when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.bodyToMono(Coupon.class)).thenReturn(Mono.just(coupon));
+
+    StepVerifier.create(couponClient.getCoupon("couponCode"))
+            .expectNextMatches(responseDTO ->
+                    responseDTO.isValid() && responseDTO.getDiscountPercentage() == 10)
+            .verifyComplete();
+}
+En este ejemplo, estamos simulando los métodos encadenados uno por uno, configurando el comportamiento de cada uno de ellos y finalmente configurando el comportamiento de bodyToMono() para que devuelva el objeto Coupon simulado.
+
+Por favor, inténtalo con esta corrección y debería funcionar correctamente.
+
+
+
+
+
